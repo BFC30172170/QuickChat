@@ -33,7 +33,7 @@ def handle_client(client_socket, address):
             if message_type == "text":
                 timestamp = datetime.now().strftime("%H:%M:%S") #Format timestamp to hour:min:sec
 
-                broadcastData = {"timestamp": timestamp, "name": client_name, "text": message['text']} #Create dictionary variable for the data / timestamp and senders name.
+                broadcastData = {"timestamp": timestamp, "name": client_name, "text": message['text'], "type": message["type"]} #Create dictionary variable for the data / timestamp and senders name.
                 
                 #Debugging to display the received message with timestamp and sender's name
                 print(f"(Debugging) {timestamp} - {client_name}: {message['text']}")
@@ -60,7 +60,7 @@ def handle_client(client_socket, address):
             break
 
 def forward_file(sender_socket, sender_name, file_data, message):
-    header = {"type": "file", "filename": message["filename"], "length": message["length"] }
+    header = {"type": "file", "timestamp":message["timestamp"],"name":sender_name, "filename": message["filename"], "length": message["length"] }
     for client in clients:
         if client != sender_socket:
             try:
@@ -86,7 +86,7 @@ def receive_file(client_socket, data_length):
 
 # Function to save received file data
 def save_file(client_name, file_data):
-    directory = "received_files"
+    directory = "files"
     if not os.path.exists(directory):
         os.makedirs(directory)
     

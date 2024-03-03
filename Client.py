@@ -24,7 +24,8 @@ def send_file(file_path):
         file_data = file.read()
     header = {"type": "file",
               "filename": file_path.split("/")[-1],
-              "length": len(file_data)
+              "length": len(file_data),
+              "timestamp" : datetime.now().strftime("%H:%M:%S") #Format timestamp to hour:min:sec
               }
     client_socket.send(json.dumps(header).encode())
     client_socket.sendall(file_data)
@@ -34,8 +35,8 @@ def choose_file():
     if file_path:
         send_file(file_path)
 
-def receive_file(client_socket, data_length):
-    message_display.insert("end", f"[{message['timestamp']}] {message['name']}: sending file: {message['text']}\n")
+def receive_file(client_socket, message, data_length):
+    message_display.insert("end", f"[{message['timestamp']}] {message['name']}: sending file: {message['filename']}\n")
     message_display.see("end")
     window.update()
     data = b''
@@ -48,7 +49,7 @@ def receive_file(client_socket, data_length):
 
 # Function to save received file data
 def save_file(client_name, file_data):
-    file_path = f'received_files/{client_name}_{datetime.now().strftime("%Y%m%d%H%M%S")}'
+    file_path = f'files/{client_name}_{datetime.now().strftime("%Y%m%d%H%M%S")}'
     with open(file_path, 'wb') as file:
         file.write(file_data)
     print(f"File received and saved to {file_path}")
@@ -56,6 +57,7 @@ def save_file(client_name, file_data):
 # Function to set the user's name
 def set_name():
     #Create a global app variable and get it from the input
+    global name 
     name = name_entry.get()
     #Disable the name input and remove submit button
     name_entry.config(state="disabled")
@@ -81,8 +83,8 @@ def receive_messages():
             break
         #Decode the JSON message
         message = json.loads(data.decode())
+        print(message)
         message_type = message["type"]
-        message_length = message["length"]
 
         if message_type == "text":
             #Update the message screen
@@ -91,8 +93,9 @@ def receive_messages():
             window.update()
             
         elif message_type == "file":
-            file_data = receive_file(client_socket, message_length)
-            save_file(client_name, file_data)
+            message_length = message["length"]
+            file_data = receive_file(client_socket,message, message_length)
+            save_file(name, file_data)
        
 #Function to send message to server
 def send_message():
