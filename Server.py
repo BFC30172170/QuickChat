@@ -16,27 +16,37 @@ class ChatServer:
         self.server_socket = None
         self.setup_socket()
 
+    def log_error(self, error_message):
+        print(f"ERROR: {error_message}")
+
     def setup_socket(self):
-        # Create the server socket
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        # Reuse address to avoid 'address already in use' error
-        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        # Bind the socket to host and port
-        self.server_socket.bind((self.host, self.port))
-        # Listen for connections, allowing up to 5 pending connections
-        self.server_socket.listen(5)
-        print(f"Server is listening on {self.host}:{self.port}")
+        try:
+            # Create the server socket
+            self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # Reuse address to avoid 'address already in use' error
+            self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            # Bind the socket to host and port
+            self.server_socket.bind((self.host, self.port))
+            # Listen for connections, allowing up to 5 pending connections
+            self.server_socket.listen(5)
+            print(f"Server is listening on {self.host}:{self.port}")
+        except Exception as e:
+            self.log_error(f"Failed to set up server socket: {e}")
+    
 
     def accept_connections(self):
         # Accept incoming connections
-        while True:
-            client_socket, client_address = self.server_socket.accept()
-            self.clients.append(client_socket)
-            print(f"Accepted connection from {client_address}")
+        try:
+            while True:
+                client_socket, client_address = self.server_socket.accept()
+                self.clients.append(client_socket)
+                print(f"Accepted connection from {client_address}")
 
-            # Handle each client in a separate thread
-            client_thread = threading.Thread(target=self.handle_client, args=(client_socket, client_address))
-            client_thread.start()
+                # Handle each client in a separate thread
+                client_thread = threading.Thread(target=self.handle_client, args=(client_socket, client_address))
+                client_thread.start()
+        except Exception as e:
+            self.log_error(f"Error accepting connections: {e}")
 
     def handle_client(self, client_socket, address):
         # Receive the client's name
@@ -118,8 +128,9 @@ class ChatServer:
             if client != sender_socket:
                 try:
                     client.send(json.dumps(message).encode())
-                except:
+                except Exception as e:
                     # Remove the client if message sending fails
+                    self.log_error(f"Error broadcasting to {client}, removing: {e}")
                     self.clients.remove(client)
 
     def receive_file(self, client_socket, data_length):
@@ -134,20 +145,23 @@ class ChatServer:
             if len(data) != data_length:
                 raise ValueError("File data incomplete")
         except Exception as e:
-            print(f"Error receiving file: {e}")
+            self.log_error(f"Error receiving file: {e}")
             return None
         return data
 
     def save_file(self, client_name, file_data, filename):
         # Save received files in a designated directory
-        directory = "files"
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        
-        file_path = os.path.join(directory, f"{client_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}")
-        with open(file_path, 'wb') as file:
-            file.write(file_data)
-        print(f"File received and saved to {file_path}")
+        try:
+            directory = "files"
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+            
+            file_path = os.path.join(directory, f"{client_name}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}")
+            with open(file_path, 'wb') as file:
+                file.write(file_data)
+            print(f"File received and saved to {file_path}")
+        except Exception as e:
+            self.log_error(f"Error saving file: {e}")
 
     def forward_file(self, sender_socket, sender_name, file_data, message):
         # Forward a file to all clients except the sender
@@ -163,8 +177,9 @@ class ChatServer:
                 try:
                     client.send(json.dumps(header).encode())
                     client.sendall(file_data)
-                except:
+                except Exception as e:
                     # Remove the client if message sending fails
+                    self.log_error(f"Error forwarding file to client {client}: {e}")
                     self.clients.remove(client)
 
     def handle_cleanup(self):
@@ -173,7 +188,7 @@ class ChatServer:
             self.server_socket.shutdown(socket.SHUT_RDWR)
             self.server_socket.close()
         except Exception as e:
-            print(f"Error during shutdown: {e}")
+            self.log_error(f"Error during shutdown: {e}")
 
 if __name__ == '__main__':
     chat_server = ChatServer()
