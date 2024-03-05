@@ -48,6 +48,7 @@ class ChatClient:
             }
             self.client_socket.send(json.dumps(header).encode())
             self.client_socket.sendall(file_data)
+            self.message_display.insert("end", f"[{header['timestamp']}] You: sending file: {header['filename']}\n", "sender")
             time.sleep(1)  # Wait to ensure file is sent before refreshing the file list
             self.refresh_file_list()
         except Exception as e:
